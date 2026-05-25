@@ -1,0 +1,41 @@
+name: Deploy Medical Chatbot
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Deploy to EC2
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USERNAME }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+
+        script: |
+
+          cd /home/ubuntu/Build-a-Complete-Medical-Chatbot-with-LLMs-LangChain-Pinecone-Flask-AWS
+
+          git pull origin main
+
+          docker stop medicalbot-container || true
+          docker rm medicalbot-container || true
+
+          docker rmi medicalbot || true
+
+          docker build -t medicalbot .
+
+          docker run -d \
+            --name medicalbot-container \
+            -p 8080:8080 \
+            --env-file .env \
+            medicalbot
