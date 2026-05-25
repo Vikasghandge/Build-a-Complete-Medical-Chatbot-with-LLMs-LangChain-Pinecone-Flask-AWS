@@ -1,4 +1,4 @@
-name: Deploy Medical Chatbot
+name: Deploy Medical Chatbot to EC2
 
 on:
   push:
@@ -11,11 +11,12 @@ jobs:
 
     steps:
 
-    - name: Checkout Code
+    - name: Checkout Repository
       uses: actions/checkout@v4
 
     - name: Deploy to EC2
       uses: appleboy/ssh-action@master
+
       with:
         host: ${{ secrets.EC2_HOST }}
         username: ${{ secrets.EC2_USERNAME }}
@@ -23,19 +24,33 @@ jobs:
 
         script: |
 
+          echo "Starting Deployment..."
+
           cd /home/ubuntu/Build-a-Complete-Medical-Chatbot-with-LLMs-LangChain-Pinecone-Flask-AWS
 
+          # Fix Git Dubious Ownership
+          git config --global --add safe.directory /home/ubuntu/Build-a-Complete-Medical-Chatbot-with-LLMs-LangChain-Pinecone-Flask-AWS
+
+          # Pull Latest Code
           git pull origin main
 
-          docker stop medicalbot-container || true
-          docker rm medicalbot-container || true
+          # Stop Existing Container
+          sudo docker stop medicalbot-container || true
 
-          docker rmi medicalbot || true
+          # Remove Existing Container
+          sudo docker rm medicalbot-container || true
 
-          docker build -t medicalbot .
+          # Remove Old Image
+          sudo docker rmi medicalbot || true
 
-          docker run -d \
+          # Build New Docker Image
+          sudo docker build -t medicalbot .
+
+          # Run New Container
+          sudo docker run -d \
             --name medicalbot-container \
             -p 8080:8080 \
             --env-file .env \
             medicalbot
+
+          echo "Deployment Successful 🚀"
