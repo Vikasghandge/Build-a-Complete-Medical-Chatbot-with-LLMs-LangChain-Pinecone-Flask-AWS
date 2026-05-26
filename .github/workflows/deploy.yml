@@ -1,4 +1,4 @@
-name: Deploy Medical Chatbot to EC2
+name: deploy
 
 on:
   push:
@@ -11,46 +11,51 @@ jobs:
 
     steps:
 
-    - name: Checkout Repository
-      uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-    - name: Deploy to EC2
-      uses: appleboy/ssh-action@master
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
 
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ${{ secrets.EC2_USERNAME }}
-        key: ${{ secrets.EC2_SSH_KEY }}
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
 
-        script: |
+          script: |
 
-          echo "Starting Deployment..."
+            echo "Starting Deployment"
 
-          cd /home/ubuntu/Build-a-Complete-Medical-Chatbot-with-LLMs-LangChain-Pinecone-Flask-AWS
+            # Go to home directory
+            cd /home/ubuntu
 
-          # Fix Git Dubious Ownership
-          git config --global --add safe.directory /home/ubuntu/Build-a-Complete-Medical-Chatbot-with-LLMs-LangChain-Pinecone-Flask-AWS
+            # Clone repo if not exists
+            if [ ! -d "medicalbot" ]; then
+              git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git medicalbot
+            fi
 
-          # Pull Latest Code
-          git pull origin main
+            # Go into repo
+            cd medicalbot
 
-          # Stop Existing Container
-          sudo docker stop medicalbot-container || true
+            # Pull latest code
+            git pull origin main
 
-          # Remove Existing Container
-          sudo docker rm medicalbot-container || true
+            # Stop old container
+            docker stop medicalbot-container || true
 
-          # Remove Old Image
-          sudo docker rmi medicalbot || true
+            # Remove old container
+            docker rm medicalbot-container || true
 
-          # Build New Docker Image
-          sudo docker build -t medicalbot .
+            # Remove old image
+            docker rmi medicalbot:latest || true
 
-          # Run New Container
-          sudo docker run -d \
-            --name medicalbot-container \
-            -p 8080:8080 \
-            --env-file .env \
-            medicalbot
+            # Build image
+            docker build -t medicalbot .
 
-          echo "Deployment Successful 🚀"
+            # Run container
+            docker run -d \
+              --name medicalbot-container \
+              -p 8080:8080 \
+              medicalbot
+
+            echo "Deployment Successful"
